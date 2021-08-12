@@ -1,20 +1,25 @@
-/********************************************************************
-Copyright 2010-2017 K.C. Wang, <kwang@eecs.wsu.edu>
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-********************************************************************/
 
 #include "type.h"
+
+/**
+ * Como acessar um dispositivo mapeado em memoria que nao esta
+ * no espaco de enderecamento virtual?
+ * 
+ * A UART eh mapeada no endereco 0x101F1000, que esta fora do
+ * espaco de enderecamento de 0x80000000 - 0x90100000. 
+ * 
+ * Para resolver esse problema, mapeamos a página virtual 0x901FF 
+ * para a pagina fisica 0x101F1. Assim, podemos acessar e controlar
+ * a UART. 
+ * 
+ * Essa solucao, ainda que funcione, deve ser feita com atencao:
+ * em sistemas operacionais podemos nao querer que processos de
+ * usuario tenham acesso a dispositivos. Como nao temos nenhum
+ * SO aqui e passar o buffer do espaco do kernel para o buffer
+ * do espaco do usuario seria complicado, optamos por essa solucao.
+ * 
+ * **/
+
 volatile unsigned int *const UART0DR = (unsigned int *)0x901FF000;
 void print_uart0(const char *s)
 {
@@ -25,6 +30,7 @@ void print_uart0(const char *s)
       s++;
    }
 }
+
 /**************** KCW about remap vector table *********************
 ARM vector table can be remapped to 0xFFFF0000 by set C1.bit13 to 1
 Using 1MB sections, we must map the highest 1MB VA to a 1MB PA area 
@@ -44,7 +50,7 @@ int remap_vector_table()
    u32 *vectors_src = &vectors_start;
    u32 *vectors_dst = (u32 *)0x800F0000; // highest 64KB in 1MB area
 
-   print_uart0("REMAP vector table to VA=0x800F0000 (PA=1MB-64KB)\n");
+   print_uart0("Remapeamento do vetor de interrupcoes para VA=0x800F0000 \n");
 
    while (vectors_src < &vectors_end)
       *vectors_dst++ = *vectors_src++;
@@ -137,8 +143,6 @@ int mk2Ptable()
       }
    }
 
-   // virtual address 0x804FF??? to 101f1???
-
    pgdir[4095] = 0x480000 | 0x11;
 
    pgtable = (int *)(0x80480000);
@@ -148,6 +152,10 @@ int mk2Ptable()
       pgtable[j] = paddr + j * 4096; // inc by 4KB
    }
 
+   /**
+   * Aqui mapeamos a pag virutal 0x901FFxxx para 0x101F1xxx.
+   * 
+   * **/
    pgtable = (int *)(0x80400000 + (int)257 * 1024);
    pgtable[255] = 0x101F1000 | 0x55E;
 
@@ -165,18 +173,20 @@ int main()
    remap_vector_table();
    mk2Ptable();
 
-   print_uart0("test MMU protection: try to access VA=0x80200000\n");
+   print_uart0("Neste exercicio mapeamos 258MB da memoria virtual a partir de 2 GB :\n");
+   print_uart0("   O espaco de enderecamento vai de: 0x80000000 ate 0xC01FFFFF\n");
+   print_uart0("[TESTE] Protecao da MMU: tentativa de acesso à 0x80200000 - 2G+2MB\n");
    ip = (int *)0x80200000;
    *ip = 123;
 
-   print_uart0("test MMU protection: try to access VA=0x02000000\n");
+   print_uart0("[TESTE] Protecao da MMU: tentativa de acesso à 0x02000000 - 32MB\n");
    ip = (int *)0x02000000;
    *ip = 123;
 
-   print_uart0("try to see vectors at VA=0x800F0000\n");
-   print_uart0("try to see vectors at VA=0xFFFF0000\n");
+   // print_uart0("try to see vectors at VA=0x800F0000\n");
+   // print_uart0("try to see vectors at VA=0xFFFF0000\n");
 
-   print_uart0("test MMU protection: try to access VA=0x20000000\n");
+   print_uart0("[TESTE] Protecao da MMU: tentativa de acesso à 0x20000000 - 512 MB\n");
    ip = (int *)0x20000000;
    *ip = 123;
 

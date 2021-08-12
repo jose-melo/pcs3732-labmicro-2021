@@ -1,8 +1,11 @@
 	.text
 .code 32
+
+@ ------------------------------------  	
+@ Configuracao dos simbolos globais
+@ ------------------------------------ 
 .global reset_handler
 .global vectors_start, vectors_end
-
 .global inton, getcsr
 .global switchPtable
 .global lock, unlock, int_off, int_on, getpgdir
@@ -13,91 +16,106 @@
 .global main
 .global switchPgdir
 
+@ ------------------------------------  	
+@ Inicio da execucao
+@ ------------------------------------  
 reset_handler:
   LDR sp, =svc_stack_top
 
-
+@ ------------------------------------  
 @ Limpa tabela de paginas 
-  mov r0, #0x4000            @ ptable at 0x4000=16 KB
-  mov r1, #4096              @ 4096 entries
-  mov r2, #0                 @ fill all with 0
+@ ------------------------------------  
+  mov r0, #0x4000            @ Tabela de paginas em 0x4000=16 KB
+  mov r1, #4096              @ Temos 4096 entradas
+  mov r2, #0                 @ Preencher tudo com zeros
 1:
-  str r2, [r0],#0x04         @ store r3 to [r0]; inc r0 by 4
-  subs r1, r1, #1            @ r1-- 
-  bgt 1b                     @ loop r1=4096 times
+  str r2, [r0],#0x04         @ Zera a tabela e incrementa o ponteiro
+  subs r1, r1, #1            @ Subtrai o contador r1
+  bgt 1b                     @ Faz o loop 4096 vezes
 
-@ Versatilepb, arm926ej-s only have 256MB RAM + 2MB I/O at 256MB,
-@ pgtable[0-257] ID map to low 258MB PA
-@ pgtable[2048, 2048+257]: VA=2G map to low 258MB PA
-  mov r0, #0x4000            @ r0 => ptable[0]
+@ ------------------------------------  
+@ pgtable[0-257] vai mapear os 258MB mais baixos
+@ pgtable[2048, 2048+257] vai mapear 2G de endereco virtual para 258MB do endereco fisico
+@ ------------------------------------  
+  mov r0, #0x4000            @ Inicializa o ponteiro para ptable[0]
   mov r1, r0 
-  add r1, #(2048*4)          @ r1 => ptable[2048]
+  add r1, #(2048*4)          @ R1 sera o ponteiro para ptable[2048]
 	
-  mov r2, #256               @ r2=256
-  add r2, r2, #2             @ r2=258 entries for 256MB RAM + 2MB I/O space
-  mov r3, #0x100000          @ r3=1M increments
+  mov r2, #256               @ Carrega r2 com 256
+  add r2, r2, #2             @ R2 indicara as 258 entradas: 256MB RAM + 2MB espaco de I/O
+  mov r3, #0x100000          @ O passo dos enderecos eh de 1M
 
-  mov r4, #0x400             @ create r4=0x412
-  orr r4, r4, #0x12          @ r4 = 0x412 OR 0xC12 if AP=11: used 0xC12
-
-@ 412 -> 0100 0001 0010
-@ KCW: seems must ID map lowest 1MB
+  mov r4, #0x400             @ Ajuste da descricao
+  orr r4, r4, #0x12          @ R4 recebe 0x412 
   str r4, [r0]               @ set ptable[0] to ID map 1MB PA	
 2:
-  str r4, [r1], #4           @ store r4 to [r1]; inc r1 by 4
-  add r4, r4, r3             @ inc r4 by 1M
-  subs r2, r2, #1            @ r2-- 
-  bgt 2b                     @ loop r2=258 times
+  str r4, [r1], #4           @ Armazena a descricao na tabela 
+  add r4, r4, r3             @ Soma com o passo
+  subs r2, r2, #1            @ Subtrai o numero de entradas
+  bgt 2b                     @ Faz o loop
+  	
+@ ------------------------------------  	
+@ Ajusta o registrador TTB 
+@ ------------------------------------ 
+  mov r0, #0x4000            @ O endereço base da tabela sera 0x4000
+  mcr p15, 0, r0, c2, c0, 0  @ Usa o R0 para configurar o TTBase da MMU
+  mcr p15, 0, r0, c8, c7, 0  @ Apaga o cache TLB (translate lookaside buffer)
 
-@ set TTB pointing at ptable at 0x4000 = 16 KB
-  mov r0, #0x4000
-  mcr p15, 0, r0, c2, c0, 0  @ set TTBase with PHYSICAL address 0x400000
-  mcr p15, 0, r0, c8, c7, 0  @ flush TLB
+@ ------------------------------------  	
+@ Configura o dominio domain0: 
+@    01 = client (Verifica a permissao)
+@    11 = master (Sem verificacao das permissoes)
+@ ------------------------------------  	
+  mov r0, #0x1               @ Escreve 01 (Cliente) no registrador R0 
+  mcr p15, 0, r0, c3, c0, 0  @ Configura o registrador de dominio da MMU
 
-@ set domain0: 01=client(check permission) 11=master(no check)
-  mov r0, #0x1               @ 01 for CLIENT
-  mcr p15, 0, r0, c3, c0, 0  @ write 0x11=MASTER to domain REG c3
-
-@ enable MMU 
-  mrc p15, 0, r0, c1, c0, 0   @ read control REG c1 into r0
-@ c1 bit-13 = 1 => remap Vectors to 0xFFFF0000-0xFFFF001C
+@ ------------------------------------  	
+@ Habilita a MMU
+@ ------------------------------------   
+  mrc p15, 0, r0, c1, c0, 0   @ Leitura do reg. c1 da MMU para o r0
   mov r0, #0
-  orr r0, r0, #0x00002000      @ set C1 bit 13 (remap vectors) and bit 0
-  ORR r0, r0, #0x00000001     @ set bit0 of r0 to 1
-  mcr p15, 0, r0, c1, c0, 0   @ write to control REG c1 ==> MMU on
-  nop
-  nop
-  nop
-  mrc p15, 0, r2, c2, c0, 0   @ read TLB base reg c2 into r2
-  mov r2, r2                  @ time ??   
+  orr r0, r0, #0x00002000     @ Ativa o 13o bit (vamos remapear o vetor de interrupt)
+  ORR r0, r0, #0x00000001     @ Ativa o primeiro bit (bit de enable da MMU)
+  mcr p15, 0, r0, c1, c0, 0   @ Configura a MMU
+  nop                         @ Essas tres instrucoes sao importantes para  
+  nop                         @ dar tempo suficiente para a configuracao da MMU 
+  nop                         @ Depende da implementacao do hw (qtd de estagios do pipeline)    
+  mrc p15, 0, r2, c2, c0, 0   @ Verificacao: faz a leitura o TLBbase
+  mov r2, r2                  @ nop 
 
-  adr pc, start               @ force PC-relative addresssing
+  adr pc, start               @ Usamos enderecamento relativo ao PC
 
 start:	 
-@ set SVC stack to high end of int svc_stack[1024]
-  LDR r5, =svc_stack      @ r5 points svc_stack[]
-  ADD r5, #4096           @ r4 -> high end of svc_stack[]
+@ ------------------------------------  	
+@ Ajuste da pilha do supervisor (endereco virtual)
+@ ------------------------------------ 
+  LDR r5, =svc_stack      
+  ADD r5, #4096           
   MOV sp, r5
 
-@ go in IRQ mode to set IRQ stack 
+@ ------------------------------------  	
+@ Vai para o modo IRQ para ajuste da pilha
+@ ------------------------------------   
   MSR cpsr, #0x12       @ write to cspr, so in IRQ mode now 
   ldr sp, =irq_stack @ u32 irq_stack[1024] in t.c
   add sp, sp,#4096   @ ensure it's a VA from 2GB
 
-@ go in ABT mode to set ABT stack
-  MOV r0, #0x17  @ORR r1, r1, #0x17
+@ ------------------------------------  	
+@ Vai para o modo ABT para ajuste da pilha
+@ ------------------------------------  k
+  MOV r0, #0x17  
   MSR cpsr, r0
   LDR sp, =abt_stack_top
 	
-@ go back to SVC mode, enable IRQ interrupts
+@ ------------------------------------  	
+@ Volta para o modo SVC para ajuste das interrupcoes
+@ ------------------------------------  s
   mov r0, #0x13      @ both IRQ and FIQ bits are 0
   MSR cpsr, r0       @ write to cspr, so in SVC mode now
 
-@ NO MORE copy vector table to address 0 
-@  BL copy_vector_table
-@  BL main
-
-@ call main() in SVC mode
+@ ------------------------------------  	
+@ Chama a funcao principal em C
+@ ------------------------------------ e
   LDR r0, mainstart
   mov pc, r0
   B .
@@ -105,57 +123,75 @@ start:
 mainstart: .word main
 
 .align 4
+@ ------------------------------------  	
+@ Handler da interrupcoes de dados
+@ ------------------------------------ 	
 data_handler:
-  sub	lr, lr, #4   @ ARM's linkReg must be -4; if write irq_handler() with
-  stmfd	sp!, {r0-r12, lr}  @ save all Umode regs in kstack
-  bl	data_abort_handler @ call handler in C
-  ldmfd	sp!, {r0-r12, pc}^ @ pop from kstack but restore Umode SR
+  sub	lr, lr, #4           @ Ajusta o LR subtraindo 4
+  stmfd	sp!, {r0-r12, lr}  @ Salva regs na pilha 
+  bl	data_abort_handler   @ Desvia para o handler em C 
+  ldmfd	sp!, {r0-r12, pc}^ @ Retorna 
 
-irq_handler:           @ IRQ interrupts entry point
-  sub	lr, lr, #4   @ ARM's linkReg must be -4; if write irq_handler() with
-  stmfd	sp!, {r0-r12, lr}  @ save all Umode regs in kstack
-  bl	irq_chandler  @ call irq_handler() in C in svc.c file   
-  ldmfd	sp!, {r0-r12, pc}^ @ pop from kstack but restore Umode SR
+@ ------------------------------------  	
+@ Handler da interrupcoes IRQ 
+@ ------------------------------------ 	
+irq_handler:           
+  sub	lr, lr, #4   
+  stmfd	sp!, {r0-r12, lr}  
+  bl	irq_chandler    
+  ldmfd	sp!, {r0-r12, pc}^ 
 
 getsp:
    mov r0, sp
    mov pc, lr
-	
-switchPgdir:	@ switch pgdir to new PROC's pgdir; passed in r0
-  @ r0 contains address of PROC's pgdir address	
-  mcr p15, 0, r0, c2, c0, 0  @ set TTBase to C2
+
+@ ------------------------------------  	
+@ Altera o diretorio de tabela de paginas
+@ ------------------------------------ 	
+switchPgdir:	@ Assume-se que R0 contem o novo diretorio 
+  mcr p15, 0, r0, c2, c0, 0  @ Seta o novo diretorio em C2
   mov r1, #0
-  mcr p15, 0, r1, c8, c7, 0  @ flush TLB 
-  mcr p15, 0, r1, c7, c10, 0 @ flush TLB
-  mrc p15, 0, r2, c2, c0, 0  @ read TLB base reg C2
+  mcr p15, 0, r1, c8, c7, 0  @ Limpa TLB 
+  mcr p15, 0, r1, c7, c10, 0 @ Limpa TLB
+  mrc p15, 0, r2, c2, c0, 0  @ Realiza a leitura o endereco do TLB base
 	
-  @ set domain: all 01=client(check permission) 11=master(no check)
-  mov r0, #0x3                @ 11 for MASER
-  mcr p15, 0, r0, c3, c0, 0   @ write 0x3 to domain reg C3
+@ ------------------------------------  	
+@ Configura o dominio domain0: 
+@    01 = client (Verifica a permissao)
+@    11 = master (Sem verificacao das permissoes)
+@ ------------------------------------  
+  mov r0, #0x3                @ 11 para master
+  mcr p15, 0, r0, c3, c0, 0   @ Configura a MMU
 
   adr pc, go
 go:	
-  mov pc, lr
+  mov pc, lr  @ retorna
 
-getpgdir: @ read tlb base register C2
-    mrc p15, 0, r0, c2,c0, 0  @ read P15's C2 into r0
-    mov pc,lr              @ return
+@ ------------------------------------  	
+@ Faz a leitura da tabela de paginas 
+@ ------------------------------------ 	
+getpgdir:
+    mrc p15, 0, r0, c2,c0, 0 
+    mov pc,lr              
 
 svc_entry:
 
 	
-get_fault_status:	@ read and return MMU reg 5
-  MRC p15,0,r0,c5,c0,0    @ read DFSR
+get_fault_status:	
+  MRC p15,0,r0,c5,c0,0   
   mov pc, lr	
 
-get_fault_addr:	         @ read and return MMU reg 6
-  MRC p15,0,r0,c6,c0,0    @ read DFSR
+get_fault_addr:	        
+  MRC p15,0,r0,c6,c0,0    
   mov pc, lr	
 
 get_spsr:
   mrs r0, spsr
   mov pc, lr
 
+@ ------------------------------------  	
+@ Interrupt vector
+@ ------------------------------------
 vectors_start:
   LDR PC, reset_handler_addr
   LDR PC, undef_handler_addr
@@ -166,6 +202,9 @@ vectors_start:
   LDR PC, irq_handler_addr
   LDR PC, fiq_handler_addr
 
+@ ------------------------------------------  	
+@ Tratamentos de interrupcoes: reset e data
+@ ------------------------------------------  
 reset_handler_addr:          .word reset_handler
 undef_handler_addr:          .word loopBobo
 svc_handler_addr:            .word loopBobo
