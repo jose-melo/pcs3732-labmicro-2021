@@ -1,4 +1,0 @@
-file t.elf
-target remote localhost:1234
-load
-layout regs
