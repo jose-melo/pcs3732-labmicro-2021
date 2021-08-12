@@ -1,0 +1,409 @@
+
+t.elf:     file format elf32-littlearm
+
+Disassembly of section .text:
+
+80010000 <reset_handler>:
+80010000:	e59fd1e4 	ldr	sp, [pc, #484]	; 800101ec <.text+0x1ec>
+80010004:	e3a00901 	mov	r0, #16384	; 0x4000
+80010008:	e3a01a01 	mov	r1, #4096	; 0x1000
+8001000c:	e3a02000 	mov	r2, #0	; 0x0
+80010010:	e4802004 	str	r2, [r0], #4
+80010014:	e2511001 	subs	r1, r1, #1	; 0x1
+80010018:	cafffffc 	bgt	80010010 <reset_handler+0x10>
+8001001c:	e3a00901 	mov	r0, #16384	; 0x4000
+80010020:	e1a01000 	mov	r1, r0
+80010024:	e2811a02 	add	r1, r1, #8192	; 0x2000
+80010028:	e3a02c01 	mov	r2, #256	; 0x100
+8001002c:	e2822002 	add	r2, r2, #2	; 0x2
+80010030:	e3a03601 	mov	r3, #1048576	; 0x100000
+80010034:	e3a04b01 	mov	r4, #1024	; 0x400
+80010038:	e3844012 	orr	r4, r4, #18	; 0x12
+8001003c:	e5804000 	str	r4, [r0]
+80010040:	e4814004 	str	r4, [r1], #4
+80010044:	e0844003 	add	r4, r4, r3
+80010048:	e2522001 	subs	r2, r2, #1	; 0x1
+8001004c:	cafffffb 	bgt	80010040 <reset_handler+0x40>
+80010050:	e3a00901 	mov	r0, #16384	; 0x4000
+80010054:	ee020f10 	mcr	15, 0, r0, cr2, cr0, {0}
+80010058:	ee080f17 	mcr	15, 0, r0, cr8, cr7, {0}
+8001005c:	e3a00001 	mov	r0, #1	; 0x1
+80010060:	ee030f10 	mcr	15, 0, r0, cr3, cr0, {0}
+80010064:	ee110f10 	mrc	15, 0, r0, cr1, cr0, {0}
+80010068:	e3a00000 	mov	r0, #0	; 0x0
+8001006c:	e3800a02 	orr	r0, r0, #8192	; 0x2000
+80010070:	e3800001 	orr	r0, r0, #1	; 0x1
+80010074:	ee010f10 	mcr	15, 0, r0, cr1, cr0, {0}
+80010078:	e1a00000 	nop			(mov r0,r0)
+8001007c:	e1a00000 	nop			(mov r0,r0)
+80010080:	e1a00000 	nop			(mov r0,r0)
+80010084:	ee122f10 	mrc	15, 0, r2, cr2, cr0, {0}
+80010088:	e1a02002 	mov	r2, r2
+8001008c:	e24ff004 	sub	pc, pc, #4	; 0x4
+
+80010090 <start>:
+80010090:	e59f5158 	ldr	r5, [pc, #344]	; 800101f0 <.text+0x1f0>
+80010094:	e2855a01 	add	r5, r5, #4096	; 0x1000
+80010098:	e1a0d005 	mov	sp, r5
+8001009c:	e329f012 	msr	CPSR_fc, #18	; 0x12
+800100a0:	e59fd14c 	ldr	sp, [pc, #332]	; 800101f4 <.text+0x1f4>
+800100a4:	e28dda01 	add	sp, sp, #4096	; 0x1000
+800100a8:	e3a00017 	mov	r0, #23	; 0x17
+800100ac:	e129f000 	msr	CPSR_fc, r0
+800100b0:	e59fd140 	ldr	sp, [pc, #320]	; 800101f8 <.text+0x1f8>
+800100b4:	e3a00013 	mov	r0, #19	; 0x13
+800100b8:	e129f000 	msr	CPSR_fc, r0
+800100bc:	e59f0004 	ldr	r0, [pc, #4]	; 800100c8 <mainstart>
+800100c0:	e1a0f000 	mov	pc, r0
+800100c4:	eafffffe 	b	800100c4 <start+0x34>
+
+800100c8 <mainstart>:
+800100c8:	80010498 	mulhi	r1, r8, r4
+
+800100cc <disable_mmu>:
+800100cc:	ee110f10 	mrc	15, 0, r0, cr1, cr0, {0}
+800100d0:	e3c00002 	bic	r0, r0, #2	; 0x2
+800100d4:	e3c00001 	bic	r0, r0, #1	; 0x1
+800100d8:	e3c00a02 	bic	r0, r0, #8192	; 0x2000
+800100dc:	ee010f10 	mcr	15, 0, r0, cr1, cr0, {0}
+800100e0:	e1a00000 	nop			(mov r0,r0)
+800100e4:	e1a00000 	nop			(mov r0,r0)
+800100e8:	e1a00000 	nop			(mov r0,r0)
+800100ec:	e1a00000 	nop			(mov r0,r0)
+800100f0:	e1a0f00e 	mov	pc, lr
+
+800100f4 <enable_mmu>:
+800100f4:	ee110f10 	mrc	15, 0, r0, cr1, cr0, {0}
+800100f8:	e3800002 	orr	r0, r0, #2	; 0x2
+800100fc:	e3800001 	orr	r0, r0, #1	; 0x1
+80010100:	e3800a02 	orr	r0, r0, #8192	; 0x2000
+80010104:	ee010f10 	mcr	15, 0, r0, cr1, cr0, {0}
+80010108:	e1a00000 	nop			(mov r0,r0)
+8001010c:	e1a00000 	nop			(mov r0,r0)
+80010110:	e1a00000 	nop			(mov r0,r0)
+80010114:	e1a00000 	nop			(mov r0,r0)
+80010118:	e1a0f00e 	mov	pc, lr
+8001011c:	e1a00000 	nop			(mov r0,r0)
+
+80010120 <data_handler>:
+80010120:	e24ee004 	sub	lr, lr, #4	; 0x4
+80010124:	e92d5fff 	stmdb	sp!, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl, fp, ip, lr}
+80010128:	eb00006f 	bl	800102ec <data_abort_handler>
+8001012c:	e8fd9fff 	ldmia	sp!, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl, fp, ip, pc}^
+
+80010130 <irq_handler>:
+80010130:	e24ee004 	sub	lr, lr, #4	; 0x4
+80010134:	e92d5fff 	stmdb	sp!, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl, fp, ip, lr}
+80010138:	eb000091 	bl	80010384 <irq_chandler>
+8001013c:	e8fd9fff 	ldmia	sp!, {r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, sl, fp, ip, pc}^
+
+80010140 <getsp>:
+80010140:	e1a0000d 	mov	r0, sp
+80010144:	e1a0f00e 	mov	pc, lr
+
+80010148 <switchPgdir>:
+80010148:	ee020f10 	mcr	15, 0, r0, cr2, cr0, {0}
+8001014c:	e3a01000 	mov	r1, #0	; 0x0
+80010150:	ee081f17 	mcr	15, 0, r1, cr8, cr7, {0}
+80010154:	ee071f1a 	mcr	15, 0, r1, cr7, cr10, {0}
+80010158:	ee122f10 	mrc	15, 0, r2, cr2, cr0, {0}
+8001015c:	e3a00003 	mov	r0, #3	; 0x3
+80010160:	ee030f10 	mcr	15, 0, r0, cr3, cr0, {0}
+80010164:	e24ff004 	sub	pc, pc, #4	; 0x4
+
+80010168 <go>:
+80010168:	e1a0f00e 	mov	pc, lr
+
+8001016c <getpgdir>:
+8001016c:	ee120f10 	mrc	15, 0, r0, cr2, cr0, {0}
+80010170:	e1a0f00e 	mov	pc, lr
+
+80010174 <get_fault_status>:
+80010174:	ee150f10 	mrc	15, 0, r0, cr5, cr0, {0}
+80010178:	e1a0f00e 	mov	pc, lr
+
+8001017c <get_fault_addr>:
+8001017c:	ee160f10 	mrc	15, 0, r0, cr6, cr0, {0}
+80010180:	e1a0f00e 	mov	pc, lr
+
+80010184 <get_spsr>:
+80010184:	e14f0000 	mrs	r0, SPSR
+80010188:	e1a0f00e 	mov	pc, lr
+
+8001018c <vectors_start>:
+8001018c:	e59ff018 	ldr	pc, [pc, #24]	; 800101ac <reset_handler_addr>
+80010190:	e59ff018 	ldr	pc, [pc, #24]	; 800101b0 <undef_handler_addr>
+80010194:	e59ff018 	ldr	pc, [pc, #24]	; 800101b4 <svc_handler_addr>
+80010198:	e59ff018 	ldr	pc, [pc, #24]	; 800101b8 <prefetch_abort_handler_addr>
+8001019c:	e59ff018 	ldr	pc, [pc, #24]	; 800101bc <data_abort_handler_addr>
+800101a0:	eafffffe 	b	800101a0 <vectors_start+0x14>
+800101a4:	e59ff014 	ldr	pc, [pc, #20]	; 800101c0 <irq_handler_addr>
+800101a8:	e59ff014 	ldr	pc, [pc, #20]	; 800101c4 <fiq_handler_addr>
+
+800101ac <reset_handler_addr>:
+800101ac:	80010000 	andhi	r0, r1, r0
+
+800101b0 <undef_handler_addr>:
+800101b0:	800101c8 	andhi	r0, r1, r8, asr #3
+
+800101b4 <svc_handler_addr>:
+800101b4:	800101c8 	andhi	r0, r1, r8, asr #3
+
+800101b8 <prefetch_abort_handler_addr>:
+800101b8:	800101c8 	andhi	r0, r1, r8, asr #3
+
+800101bc <data_abort_handler_addr>:
+800101bc:	80010120 	andhi	r0, r1, r0, lsr #2
+
+800101c0 <irq_handler_addr>:
+800101c0:	800101c8 	andhi	r0, r1, r8, asr #3
+
+800101c4 <fiq_handler_addr>:
+800101c4:	800101c8 	andhi	r0, r1, r8, asr #3
+
+800101c8 <loopBobo>:
+800101c8:	eafffffe 	b	800101c8 <loopBobo>
+
+800101cc <int_on>:
+800101cc:	e10f4000 	mrs	r4, CPSR
+800101d0:	e3c44080 	bic	r4, r4, #128	; 0x80
+800101d4:	e129f004 	msr	CPSR_fc, r4
+800101d8:	e1a0f00e 	mov	pc, lr
+
+800101dc <int_off>:
+800101dc:	e10f4000 	mrs	r4, CPSR
+800101e0:	e3844080 	orr	r4, r4, #128	; 0x80
+800101e4:	e129f004 	msr	CPSR_fc, r4
+800101e8:	e1a0f00e 	mov	pc, lr
+800101ec:	800135f8 	strhid	r3, [r1], -r8
+800101f0:	800105f0 	strhid	r0, [r1], -r0
+800101f4:	800115f4 	strhid	r1, [r1], -r4
+800101f8:	800155f8 	strhid	r5, [r1], -r8
+800101fc:	e1a00000 	nop			(mov r0,r0)
+80010200:	00002341 	andeq	r2, r0, r1, asr #6
+80010204:	61656100 	cmnvs	r5, r0, lsl #2
+80010208:	01006962 	tsteq	r0, r2, ror #18
+8001020c:	00000019 	andeq	r0, r0, r9, lsl r0
+80010210:	4d524105 	ldfmie	f4, [r2, #-20]
+80010214:	45363239 	ldrmi	r3, [r6, #-569]!
+80010218:	00532d4a 	subeqs	r2, r3, sl, asr #26
+8001021c:	01080506 	tsteq	r8, r6, lsl #10
+80010220:	012c0109 	teqeq	ip, r9, lsl #2
+
+80010224 <print_uart0>:
+80010224:	e52db004 	str	fp, [sp, #-4]!
+80010228:	e28db000 	add	fp, sp, #0	; 0x0
+8001022c:	e24dd00c 	sub	sp, sp, #12	; 0xc
+80010230:	e50b0008 	str	r0, [fp, #-8]
+80010234:	ea000007 	b	80010258 <print_uart0+0x34>
+80010238:	e59f3034 	ldr	r3, [pc, #52]	; 80010274 <.text+0x274>
+8001023c:	e5933000 	ldr	r3, [r3]
+80010240:	e51b2008 	ldr	r2, [fp, #-8]
+80010244:	e5d22000 	ldrb	r2, [r2]
+80010248:	e5832000 	str	r2, [r3]
+8001024c:	e51b3008 	ldr	r3, [fp, #-8]
+80010250:	e2833001 	add	r3, r3, #1	; 0x1
+80010254:	e50b3008 	str	r3, [fp, #-8]
+80010258:	e51b3008 	ldr	r3, [fp, #-8]
+8001025c:	e5d33000 	ldrb	r3, [r3]
+80010260:	e3530000 	cmp	r3, #0	; 0x0
+80010264:	1afffff3 	bne	80010238 <print_uart0+0x14>
+80010268:	e28bd000 	add	sp, fp, #0	; 0x0
+8001026c:	e49db004 	ldr	fp, [sp], #4
+80010270:	e12fff1e 	bx	lr
+80010274:	8001051c 	andhi	r0, r1, ip, lsl r5
+
+80010278 <remap_vector_table>:
+80010278:	e52db004 	str	fp, [sp, #-4]!
+8001027c:	e28db000 	add	fp, sp, #0	; 0x0
+80010280:	e24dd00c 	sub	sp, sp, #12	; 0xc
+80010284:	e59f3054 	ldr	r3, [pc, #84]	; 800102e0 <.text+0x2e0>
+80010288:	e50b3008 	str	r3, [fp, #-8]
+8001028c:	e59f3050 	ldr	r3, [pc, #80]	; 800102e4 <.text+0x2e4>
+80010290:	e50b300c 	str	r3, [fp, #-12]
+80010294:	ea000009 	b	800102c0 <remap_vector_table+0x48>
+80010298:	e51b3008 	ldr	r3, [fp, #-8]
+8001029c:	e5932000 	ldr	r2, [r3]
+800102a0:	e51b300c 	ldr	r3, [fp, #-12]
+800102a4:	e5832000 	str	r2, [r3]
+800102a8:	e51b300c 	ldr	r3, [fp, #-12]
+800102ac:	e2833004 	add	r3, r3, #4	; 0x4
+800102b0:	e50b300c 	str	r3, [fp, #-12]
+800102b4:	e51b3008 	ldr	r3, [fp, #-8]
+800102b8:	e2833004 	add	r3, r3, #4	; 0x4
+800102bc:	e50b3008 	str	r3, [fp, #-8]
+800102c0:	e51b2008 	ldr	r2, [fp, #-8]
+800102c4:	e59f301c 	ldr	r3, [pc, #28]	; 800102e8 <.text+0x2e8>
+800102c8:	e1520003 	cmp	r2, r3
+800102cc:	3afffff1 	bcc	80010298 <remap_vector_table+0x20>
+800102d0:	e1a00003 	mov	r0, r3
+800102d4:	e28bd000 	add	sp, fp, #0	; 0x0
+800102d8:	e49db004 	ldr	fp, [sp], #4
+800102dc:	e12fff1e 	bx	lr
+800102e0:	8001018c 	andhi	r0, r1, ip, lsl #3
+800102e4:	800f0000 	andhi	r0, pc, r0
+800102e8:	800101cc 	andhi	r0, r1, ip, asr #3
+
+800102ec <data_abort_handler>:
+800102ec:	e92d4800 	stmdb	sp!, {fp, lr}
+800102f0:	e28db004 	add	fp, sp, #4	; 0x4
+800102f4:	e24dd018 	sub	sp, sp, #24	; 0x18
+800102f8:	ebffffa1 	bl	80010184 <get_spsr>
+800102fc:	e50b0008 	str	r0, [fp, #-8]
+80010300:	e59f0070 	ldr	r0, [pc, #112]	; 80010378 <.text+0x378>
+80010304:	ebffffc6 	bl	80010224 <print_uart0>
+80010308:	e51b3008 	ldr	r3, [fp, #-8]
+8001030c:	e203301f 	and	r3, r3, #31	; 0x1f
+80010310:	e3530013 	cmp	r3, #19	; 0x13
+80010314:	1a000001 	bne	80010320 <data_abort_handler+0x34>
+80010318:	e59f005c 	ldr	r0, [pc, #92]	; 8001037c <.text+0x37c>
+8001031c:	ebffffc0 	bl	80010224 <print_uart0>
+80010320:	e51b3008 	ldr	r3, [fp, #-8]
+80010324:	e203301f 	and	r3, r3, #31	; 0x1f
+80010328:	e3530010 	cmp	r3, #16	; 0x10
+8001032c:	1a000001 	bne	80010338 <data_abort_handler+0x4c>
+80010330:	e59f0048 	ldr	r0, [pc, #72]	; 80010380 <.text+0x380>
+80010334:	ebffffba 	bl	80010224 <print_uart0>
+80010338:	ebffff8d 	bl	80010174 <get_fault_status>
+8001033c:	e1a03000 	mov	r3, r0
+80010340:	e50b300c 	str	r3, [fp, #-12]
+80010344:	ebffff8c 	bl	8001017c <get_fault_addr>
+80010348:	e1a03000 	mov	r3, r0
+8001034c:	e50b3010 	str	r3, [fp, #-16]
+80010350:	e51b300c 	ldr	r3, [fp, #-12]
+80010354:	e20330f0 	and	r3, r3, #240	; 0xf0
+80010358:	e1a03223 	mov	r3, r3, lsr #4
+8001035c:	e50b3014 	str	r3, [fp, #-20]
+80010360:	e51b300c 	ldr	r3, [fp, #-12]
+80010364:	e203300f 	and	r3, r3, #15	; 0xf
+80010368:	e50b3018 	str	r3, [fp, #-24]
+8001036c:	e1a00003 	mov	r0, r3
+80010370:	e24bd004 	sub	sp, fp, #4	; 0x4
+80010374:	e8bd8800 	ldmia	sp!, {fp, pc}
+80010378:	80010520 	andhi	r0, r1, r0, lsr #10
+8001037c:	8001053c 	andhi	r0, r1, ip, lsr r5
+80010380:	80010548 	andhi	r0, r1, r8, asr #10
+
+80010384 <irq_chandler>:
+80010384:	e92d4800 	stmdb	sp!, {fp, lr}
+80010388:	e28db004 	add	fp, sp, #4	; 0x4
+8001038c:	e59f0004 	ldr	r0, [pc, #4]	; 80010398 <.text+0x398>
+80010390:	ebffffa3 	bl	80010224 <print_uart0>
+80010394:	e8bd8800 	ldmia	sp!, {fp, pc}
+80010398:	80010554 	andhi	r0, r1, r4, asr r5
+
+8001039c <mkPtable>:
+8001039c:	e92d4800 	stmdb	sp!, {fp, lr}
+800103a0:	e28db004 	add	fp, sp, #4	; 0x4
+800103a4:	e24dd010 	sub	sp, sp, #16	; 0x10
+800103a8:	e59f30d8 	ldr	r3, [pc, #216]	; 80010488 <.text+0x488>
+800103ac:	e50b3010 	str	r3, [fp, #-16]
+800103b0:	e59f30d4 	ldr	r3, [pc, #212]	; 8001048c <.text+0x48c>
+800103b4:	e50b300c 	str	r3, [fp, #-12]
+800103b8:	e3a03000 	mov	r3, #0	; 0x0
+800103bc:	e50b3008 	str	r3, [fp, #-8]
+800103c0:	ea000008 	b	800103e8 <mkPtable+0x4c>
+800103c4:	e51b3008 	ldr	r3, [fp, #-8]
+800103c8:	e1a03103 	mov	r3, r3, lsl #2
+800103cc:	e51b2010 	ldr	r2, [fp, #-16]
+800103d0:	e0823003 	add	r3, r2, r3
+800103d4:	e3a02000 	mov	r2, #0	; 0x0
+800103d8:	e5832000 	str	r2, [r3]
+800103dc:	e51b3008 	ldr	r3, [fp, #-8]
+800103e0:	e2833001 	add	r3, r3, #1	; 0x1
+800103e4:	e50b3008 	str	r3, [fp, #-8]
+800103e8:	e51b2008 	ldr	r2, [fp, #-8]
+800103ec:	e59f309c 	ldr	r3, [pc, #156]	; 80010490 <.text+0x490>
+800103f0:	e1520003 	cmp	r2, r3
+800103f4:	dafffff2 	ble	800103c4 <mkPtable+0x28>
+800103f8:	e59f3088 	ldr	r3, [pc, #136]	; 80010488 <.text+0x488>
+800103fc:	e50b3014 	str	r3, [fp, #-20]
+80010400:	e3a03000 	mov	r3, #0	; 0x0
+80010404:	e50b3008 	str	r3, [fp, #-8]
+80010408:	ea00000c 	b	80010440 <mkPtable+0xa4>
+8001040c:	e51b3008 	ldr	r3, [fp, #-8]
+80010410:	e2833b02 	add	r3, r3, #2048	; 0x800
+80010414:	e1a03103 	mov	r3, r3, lsl #2
+80010418:	e51b2010 	ldr	r2, [fp, #-16]
+8001041c:	e0823003 	add	r3, r2, r3
+80010420:	e51b200c 	ldr	r2, [fp, #-12]
+80010424:	e5832000 	str	r2, [r3]
+80010428:	e51b300c 	ldr	r3, [fp, #-12]
+8001042c:	e2833601 	add	r3, r3, #1048576	; 0x100000
+80010430:	e50b300c 	str	r3, [fp, #-12]
+80010434:	e51b3008 	ldr	r3, [fp, #-8]
+80010438:	e2833001 	add	r3, r3, #1	; 0x1
+8001043c:	e50b3008 	str	r3, [fp, #-8]
+80010440:	e51b3008 	ldr	r3, [fp, #-8]
+80010444:	e3530c01 	cmp	r3, #256	; 0x100
+80010448:	daffffef 	ble	8001040c <mkPtable+0x70>
+8001044c:	e51b3010 	ldr	r3, [fp, #-16]
+80010450:	e2833b09 	add	r3, r3, #9216	; 0x2400
+80010454:	e2833004 	add	r3, r3, #4	; 0x4
+80010458:	e59f2034 	ldr	r2, [pc, #52]	; 80010494 <.text+0x494>
+8001045c:	e5832000 	str	r2, [r3]
+80010460:	e51b3014 	ldr	r3, [fp, #-20]
+80010464:	e2833dff 	add	r3, r3, #16320	; 0x3fc0
+80010468:	e283303c 	add	r3, r3, #60	; 0x3c
+8001046c:	e59f2018 	ldr	r2, [pc, #24]	; 8001048c <.text+0x48c>
+80010470:	e5832000 	str	r2, [r3]
+80010474:	e3a00603 	mov	r0, #3145728	; 0x300000
+80010478:	ebffff32 	bl	80010148 <switchPgdir>
+8001047c:	e1a00003 	mov	r0, r3
+80010480:	e24bd004 	sub	sp, fp, #4	; 0x4
+80010484:	e8bd8800 	ldmia	sp!, {fp, pc}
+80010488:	80300000 	eorhis	r0, r0, r0
+8001048c:	00000412 	andeq	r0, r0, r2, lsl r4
+80010490:	00000fff 	streqd	r0, [r0], -pc
+80010494:	00000513 	andeq	r0, r0, r3, lsl r5
+
+80010498 <main>:
+80010498:	e92d4800 	stmdb	sp!, {fp, lr}
+8001049c:	e28db004 	add	fp, sp, #4	; 0x4
+800104a0:	e24dd088 	sub	sp, sp, #136	; 0x88
+800104a4:	ebffff4c 	bl	800101dc <int_off>
+800104a8:	ebffffbb 	bl	8001039c <mkPtable>
+800104ac:	ebffff71 	bl	80010278 <remap_vector_table>
+800104b0:	e59f0054 	ldr	r0, [pc, #84]	; 8001050c <.text+0x50c>
+800104b4:	ebffff5a 	bl	80010224 <print_uart0>
+800104b8:	e59f3050 	ldr	r3, [pc, #80]	; 80010510 <.text+0x510>
+800104bc:	e50b3008 	str	r3, [fp, #-8]
+800104c0:	e51b3008 	ldr	r3, [fp, #-8]
+800104c4:	e3a0207b 	mov	r2, #123	; 0x7b
+800104c8:	e5832000 	str	r2, [r3]
+800104cc:	e59f0040 	ldr	r0, [pc, #64]	; 80010514 <.text+0x514>
+800104d0:	ebffff53 	bl	80010224 <print_uart0>
+800104d4:	e3a03602 	mov	r3, #2097152	; 0x200000
+800104d8:	e50b3008 	str	r3, [fp, #-8]
+800104dc:	e51b3008 	ldr	r3, [fp, #-8]
+800104e0:	e3a0207b 	mov	r2, #123	; 0x7b
+800104e4:	e5832000 	str	r2, [r3]
+800104e8:	e59f0028 	ldr	r0, [pc, #40]	; 80010518 <.text+0x518>
+800104ec:	ebffff4c 	bl	80010224 <print_uart0>
+800104f0:	e3a0320a 	mov	r3, #-1610612736	; 0xa0000000
+800104f4:	e50b3008 	str	r3, [fp, #-8]
+800104f8:	e51b3008 	ldr	r3, [fp, #-8]
+800104fc:	e3a0207b 	mov	r2, #123	; 0x7b
+80010500:	e5832000 	str	r2, [r3]
+80010504:	ebffff30 	bl	800101cc <int_on>
+80010508:	eafffffe 	b	80010508 <main+0x70>
+8001050c:	80010564 	andhi	r0, r1, r4, ror #10
+80010510:	80200000 	eorhi	r0, r0, r0
+80010514:	80010594 	mulhi	r1, r4, r5
+80010518:	800105c0 	andhi	r0, r1, r0, asr #11
+
+8001051c <UART0DR>:
+8001051c:	901f1000 61746164 6f62615f 65207472     ....data_abort e
+8001052c:	70656378 6e6f6974 206e6920 00000000     xception in ....
+8001053c:	20435653 65646f6d 0000000a 52455355     SVC mode....USER
+8001054c:	646f6d20 00000a65 20515249 6e616863      mode...IRQ chan
+8001055c:	72656c64 00000000 74736574 554d4d20     dler....test MMU
+8001056c:	6f727020 74636574 3a6e6f69 79727420      protection: try
+8001057c:	206f7420 65636361 56207373 47323d41      to access VA=2G
+8001058c:	424d322b 0000000a 74736574 554d4d20     +2MB....test MMU
+8001059c:	6f727020 74636574 3a6e6f69 79727420      protection: try
+800105ac:	206f7420 65636361 56207373 4d323d41      to access VA=2M
+800105bc:	00000a42 74736574 554d4d20 6f727020     B...test MMU pro
+800105cc:	74636574 3a6e6f69 79727420 206f7420     tection: try to 
+800105dc:	65636361 56207373 47323d41 3231352b     access VA=2G+512
+800105ec:	000a424d                                MB..

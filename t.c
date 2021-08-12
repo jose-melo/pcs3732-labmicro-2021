@@ -3,6 +3,11 @@
 int again;
 
 volatile unsigned int *const UART0DR = (unsigned int *)0x101f1000;
+int svc_stack[1024], irq_stack[1024];
+
+#define u32 unsigned int
+#define VA(x) ((x) + 0x80000000)
+#define PA(x) ((x)-0x80000000)
 
 void print_uart0(const char *s)
 {
@@ -14,30 +19,49 @@ void print_uart0(const char *s)
   }
 }
 
+int remap_vector_table()
+{
+  extern u32 vectors_start;
+  extern u32 vectors_end;
+  int i;
+
+  u32 *vectors_src = &vectors_start;
+  u32 *vectors_dst = (u32 *)0x800F0000; // highest 64KB in 1MB area
+
+  print_uart0("REMAP: vector_src to vector_end \n");
+
+  while (vectors_src < &vectors_end)
+    *vectors_dst++ = *vectors_src++;
+}
+
 int mkPtable()
 {
-  int i;
-  unsigned int pentry, *ptable;
-  print_uart0("            Welcome to WANIX in Arm\n");
-  print_uart0("1. build level-1 pgtable at 16KB\n");
+  int i, j;
+  int *pgdir, *pgtable, paddr, pentry;
 
-  ptable = (unsigned int *)0x4000; // page table at 0x4000
+  print_uart0("1. build new page table at 3MB\n");
+  pgdir = (int *)0x80300000;
+  pentry = 0x412;
 
   for (i = 0; i < 4096; i++)
-  { // clear 4K entries to 0
-    ptable[i] = 0;
+  { // zero out 496 entries
+    pgdir[i] = 0;
   }
-  print_uart0("2. fill 258 entries of ptable to ID map 258MB VA to PA\n");
-  pentry = 0 | 0x412; // 01 0 0000 1 00 10
-  //  pentry = 0 | 0x41E; 01 0 0000 1 11 10
 
+  // build pgtables at 5MB
+  print_uart0("2. fill 258 entries in level-1 pgdir with 258 pgtables\n");
+  pgtable = (int *)(0x80300000);
   for (i = 0; i < 258; i++)
-  {
-    ptable[i] = pentry;
-    pentry += 0x100000; // 1 0000 0000 0000 0000 0000 inc by 1MB
+  {                                // ASSUME 256MB RAM; 2 I/O sections
+    pgdir[i + 2048] = (int)pentry; // start with 0
+    pentry += 0x100000;
   }
-  print_uart0("3. finished building level-1 page table\n");
-  print_uart0("4. return to set TTB, doman and enable MMU\n");
+
+  pgtable[4095] = 0 | 0x412; // VA 0xFFF00000 map to 0
+
+  print_uart0("switch to pgdir to 0x300000 (3MB) .... ");
+  switchPgdir(0x300000);
+  print_uart0("switch pgdir OK\n");
 }
 
 int data_abort_handler()
@@ -87,21 +111,36 @@ void irq_chandler()
 
 int main()
 {
-  int *p;
+  int i, j, a, sp;
+  char line[128];
+  int *ip;
 
-  print_uart0("main running using level-1 1MB sections\n");
+  print_uart0("Welcome to WANIX in ARM\n");
+  print_uart0("Demonstration of one-level sections with VA=0x80000000(2GB)\n");
 
-  print_uart0("test MMU protection: try to access VA=0x00200000\n");
-  p = (int *)0x00200000;
-  *p = 123;
+  mkPtable();
+  remap_vector_table();
 
-  print_uart0("test MMU protection: try to access VA=0x02000000\n");
-  p = (int *)0x02000000;
-  *p = 123;
+  sp = getsp();
 
-  print_uart0("test MMU protection: try to access VA=0x20000000\n");
-  p = (int *)0x20000000;
-  *p = 123;
+  /*************************
+   print_uart0("call mkptable() to build 2-level page tables\n");  
+   mkPtable();
+   *************************/
+
+  print_uart0("try to see vectors at VA=0x800F0000\n");
+
+  print_uart0("test MMU protection: try to access VA=2G+2MB\n");
+  ip = (int *)VA(2 * 0x100000); // should be OK
+  *ip = 123;
+
+  print_uart0("test MMU protection: try to access VA=2MB\n");
+  ip = (int *)(2 * 0x100000); // should be data abort fault
+  *ip = 123;
+
+  print_uart0("test MMU protection: try to access VA=2G+512MB\n");
+  ip = (int *)VA(512 * 0x100000); // should data abort fault
+  *ip = 123;
 
   while (1)
   {

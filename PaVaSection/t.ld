@@ -7,10 +7,10 @@ SECTIONS
 {
   . = 0x10000;
   .text : {
-	ts.o
-	*(.text rodata)
+      ts.o
+      *(.text .rodata)
   }
-  .data : { *(.data)}
+  .data : { *(.data) }
   .bss : { *(.bss) }
 
   . = ALIGN(8);
@@ -22,6 +22,5 @@ SECTIONS
   abt_stack_top = .;
   . = . + 0x1000; /* 4kB of und stack memory */
   und_stack_top = .;
-
 }
 

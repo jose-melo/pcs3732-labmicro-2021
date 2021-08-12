@@ -4,11 +4,10 @@
 .global vectors_start, vectors_end
 .global get_fault_status, get_fault_addr, get_spsr
 .global lock, unlock, int_off, int_on
+.global switchPgdir, getsp
 	
 reset_handler:
    LDR sp, =svc_stack_top  @ set SVC stack
-
-  BL copy_vector_table       @ call C
 	
 @ /* KCW: set up MM try ID map sections first */
 @ @ Versatilepb: 256MB RAM, 2 I/O sections at 256MB
@@ -20,9 +19,35 @@ reset_handler:
 @                            KRW  dom
 @                           0x 4    1      2
 @	*********************************************/
-	
-  BL mkPtable
-  	
+
+
+@ for(i = 0; i < 4096; i++)ptable[i] = 0
+  mov r0, #0x4000
+  mov r1, #4096
+  mov r2, #0
+loop1:
+  str r2, [r0], #0x04
+  subs r1, r1, #1
+  bgt loop1
+
+  mov r0, #0x4000   @ ptable[0]
+  mov r1, r0
+  add r1, #(2048*4) @ ptable[2048]
+
+  mov r2, #256
+  add r2, r2, #2    @ r2 = 258, num. de entradas
+  mov r3, #0x100000 @ incrementa 1 MB
+
+  mov r4, #0x400
+  orr r4, r4, #0x12 @ r4 = 0x412 -> |AP = 01 | 0 -> SBZ | 0000 -> domain | 1 | 00 -> CB | 10 -> section
+
+  str r4, [r0]
+loop2:
+  str  r4, [r1], #4   @
+  add  r4, r4, r3     @ 1 MB increment
+  subs r2, r2, #1
+  bgt  loop2
+
 @ set TTB register
   mov r0, #0x4000
   mcr p15, 0, r0, c2, c0, 0  @ set TTBase
@@ -34,11 +59,21 @@ reset_handler:
   mcr p15, 0, r0, c3, c0, 0
 @@ enable MMU
   mrc p15, 0, r0, c1, c0, 0   @ get c1 into r0
+  mov r0, #0
+  orr r0, r0, #0x00002000
   orr r0, r0, #0x00000001     @ set bit0 to 1
   mcr p15, 0, r0, c1, c0, 0   @ write to c1
   nop
   nop
   nop
+  mrc p15, 0, r2, c2, c0, 0   @ read TLB base reg c2 into r2	
+  mov r2, r2
+  adr pc, start 
+
+start:
+  ldr r5, =svc_stack
+  add r5, #4096
+  mov sp, r5
 	
 @@ go in ABT mode to set ABT stack
   MOV r0, #0x17  @ORR r1, r1, #0x17
@@ -52,6 +87,7 @@ reset_handler:
   mov r0, #0x12
   MSR cpsr, r0            @ write to cspr, so in IRQ mode now 
   LDR sp, =irq_stack_top  @ set IRQ stack poiner
+  ADD sp, sp, #4096
 @  /* Enable IRQs */
 	
 @@ go back in SVC mode
@@ -60,8 +96,12 @@ reset_handler:
   MSR cpsr, r0            @ write r0 to CPSR
 
 @@ call main() in SVC mode */
-  BL main
+@  BL main
+  LDR r0, mainstart
+  mov pc, r0
   B .
+
+mainstart: .word main
 
 .align 4
 
@@ -71,6 +111,32 @@ data_handler: @ KCW: when data exception occur, BAD instruction is at lr-8
   stmfd	sp!, {r0-r12, lr}
   bl	data_abort_handler  
   ldmfd	sp!, {r0-r12, pc}^   
+
+
+
+getsp:
+   mov r0, sp
+   mov pc, lr
+	
+switchPgdir:	@ switch pgdir to new PROC's pgdir; passed in r0
+  @ r0 contains address of PROC's pgdir address	
+  mcr p15, 0, r0, c2, c0, 0  @ set TTBase to C2
+  mov r1, #0
+  mcr p15, 0, r1, c8, c7, 0  @ flush TLB 
+  mcr p15, 0, r1, c7, c10, 0 @ flush TLB
+  mrc p15, 0, r2, c2, c0, 0  @ read TLB base reg C2
+	
+  @ set domain: all 01=client(check permission) 11=master(no check)
+  mov r0, #0x3                @ 11 for MASER
+  mcr p15, 0, r0, c3, c0, 0   @ write 0x3 to domain reg C3
+
+  adr pc, go
+go:	
+  mov pc, lr
+
+getpgdir: @ read tlb base register C2
+    mrc p15, 0, r0, c2,c0, 0  @ read P15's C2 into r0
+    mov pc,lr              @ return
 
 vectors_start:
   LDR PC, reset_handler_addr
